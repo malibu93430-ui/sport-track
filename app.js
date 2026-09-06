@@ -1,40 +1,113 @@
-const KEY="sportTrackV1";
-const defaultPlans=[
- {id:1,name:"Full Body",exercises:["Pompes","Squats","Fentes","Gainage"]},
- {id:2,name:"Haut du corps",exercises:["Pompes","Dips","Rowing","Gainage"]},
- {id:3,name:"Séance libre",exercises:["Exercice 1"]}
-];
-let db=JSON.parse(localStorage.getItem(KEY)||"null")||{plans:defaultPlans,history:[]};
-let current=null, timer=null, startTime=0;
+const API_URL = https://script.google.com/macros/s/AKfycbwqn313sKP6NIa4plrwoji80VXttBtNy2gI0o3FS75fDa1j5NOJuYE-AuMrEqLLASFg/exec;
 
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-function persist(){localStorage.setItem(KEY,JSON.stringify(db))}
-function show(id){$$(".screen").forEach(x=>x.classList.toggle("active",x.id===id)); $$(".nav").forEach(x=>x.classList.toggle("active",x.dataset.screen===id)); render()}
-function render(){
- $("#weekSessions").textContent=db.history.filter(h=>Date.now()-h.date<7*864e5).length;
- $("#weekMinutes").textContent=Math.round(db.history.filter(h=>Date.now()-h.date<7*864e5).reduce((a,h)=>a+h.duration/60,0));
- $("#planList").innerHTML=db.plans.map(p=>`<div class="plan"><div><strong>${esc(p.name)}</strong><br><small>${p.exercises.length} exercices</small></div><button onclick="startPlan(${p.id})">▶</button></div>`).join("");
- $("#historyList").innerHTML=db.history.length?db.history.slice().reverse().map(h=>`<div class="history-item"><strong>${esc(h.name)}</strong><small>${new Date(h.date).toLocaleString("fr-FR")} · ${Math.round(h.duration/60)} min · ${h.totalSets} séries</small><small>${h.exercises.map(e=>`${esc(e.name)}: ${e.sets.map(s=>s.reps||0).join(" / ")}`).join(" · ")}</small></div>`).join(""):`<div class="empty">Aucune séance enregistrée.</div>`;
+let globalBareme = [];
+
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(`page-${pageId}`).classList.add('active');
+  event.target.classList.add('active');
 }
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function startPlan(id){let p=db.plans.find(x=>x.id===id); current={name:p.name,exercises:p.exercises.map(n=>({name:n,sets:[{reps:""},{reps:""},{reps:""}]}))}; startTime=Date.now(); show("workout"); $("#workoutTitle").textContent=current.name; updateWorkout(); clearInterval(timer);timer=setInterval(updateClock,1000)}
-function updateClock(){let s=Math.floor((Date.now()-startTime)/1000);$("#sessionTimer").textContent=fmt(s)}
-function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function updateWorkout(){
- $("#exerciseArea").innerHTML=current.exercises.map((e,ei)=>`<div class="exercise"><h3>${esc(e.name)}</h3><div class="sets"><div>#</div><div>Répétitions</div><div>Objectif</div><div></div>${e.sets.map((s,si)=>`<div>${si+1}</div><input type="number" min="0" inputmode="numeric" value="${s.reps}" data-e="${ei}" data-s="${si}" placeholder="0"><div>—</div><button class="${s.done?"done":""}" data-d="${ei}-${si}">${s.done?"✓":"○"}</button>`).join("")}</div></div>`).join("");
- $$("input[data-e]").forEach(inp=>inp.oninput=e=>{current.exercises[+e.target.dataset.e].sets[+e.target.dataset.s].reps=e.target.value});
- $$("button[data-d]").forEach(b=>b.onclick=()=>{let [ei,si]=b.dataset.d.split("-").map(Number);current.exercises[ei].sets[si].done=!current.exercises[ei].sets[si].done;updateWorkout()});
+
+async function loadData() {
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    
+    globalBareme = data.bareme;
+    
+    displayLeader(data.participants[0]);
+    displayRanking(data.participants);
+    populateForm(data.participants, data.bareme);
+    displayRules(data.bareme);
+  } catch (err) {
+    console.error("Erreur de chargement :", err);
+  }
 }
-function finish(){clearInterval(timer);let duration=Math.floor((Date.now()-startTime)/1000);let totalSets=current.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done||s.reps).length,0);$("#summaryBox").innerHTML=`<b>${esc(current.name)}</b><p>⏱ ${fmt(duration)}</p><p>🏋️ ${current.exercises.length} exercices</p><p>🔢 ${totalSets} séries</p>`;current.duration=duration;current.totalSets=totalSets;show("summary")}
-$("#startBtn").onclick=()=>startPlan(db.plans[0].id);
-$("#finishBtn").onclick=finish;
-$("#saveWorkout").onclick=()=>{db.history.push({date:Date.now(),name:current.name,duration:current.duration,totalSets:current.totalSets,exercises:current.exercises});persist();current=null;show("home")};
-$("#cancelWorkout").onclick=()=>{if(confirm("Abandonner cette séance ?")){clearInterval(timer);current=null;show("home")}};
-$$(".back").forEach(b=>{if(b.id!=="cancelWorkout")b.onclick=()=>show("home")});
-$$("[data-screen]").forEach(b=>b.onclick=()=>show(b.dataset.screen));
-$("#newPlan").onclick=()=>$("#modal").classList.remove("hidden");
-$("#closeModal").onclick=()=>$("#modal").classList.add("hidden");
-$("#createPlan").onclick=()=>{let name=$("#planName").value.trim(), ex=$("#planExercises").value.split("\n").map(x=>x.trim()).filter(Boolean);if(!name||!ex.length)return alert("Indique un nom et au moins un exercice.");db.plans.push({id:Date.now(),name,exercises:ex});persist();$("#planName").value="";$("#planExercises").value="";$("#modal").classList.add("hidden");render()};
-$("#resetBtn").onclick=()=>{if(confirm("Réinitialiser toutes les données ?")){localStorage.removeItem(KEY);location.reload()}};
-render();
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+
+function displayLeader(leader) {
+  if (!leader) return;
+  document.getElementById("leader-name").textContent = leader.nom;
+  document.getElementById("leader-score").textContent = leader.score;
+  document.getElementById("leader-incidents").textContent = `${leader.incidents} incident(s)`;
+}
+
+function displayRanking(participants) {
+  const list = document.getElementById("ranking-list");
+  list.innerHTML = "";
+  participants.forEach((p, idx) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<strong>${p.nom}</strong> <span>${p.score} pts (${p.incidents} inc.)</span>`;
+    list.appendChild(li);
+  });
+}
+
+function displayRules(bareme) {
+  const list = document.getElementById("rules-list");
+  list.innerHTML = "";
+  bareme.forEach(b => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${b.action}</span> <strong>+${b.points} pt(s)</strong>`;
+    list.appendChild(li);
+  });
+}
+
+function populateForm(participants, bareme) {
+  const selectPart = document.getElementById("select-participant");
+  const selectAct = document.getElementById("select-action");
+  
+  selectPart.innerHTML = "";
+  selectAct.innerHTML = "";
+
+  participants.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.nom;
+    opt.textContent = p.nom;
+    selectPart.appendChild(opt);
+  });
+
+  bareme.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b.action;
+    opt.textContent = `${b.action} (+${b.points} pts)`;
+    selectAct.appendChild(opt);
+  });
+}
+
+document.getElementById("incident-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-submit");
+  btn.disabled = true;
+  btn.textContent = "Enregistrement...";
+
+  const participant = document.getElementById("select-participant").value;
+  const actionName = document.getElementById("select-action").value;
+  const contexte = document.getElementById("input-contexte").value;
+  const actionObj = globalBareme.find(b => b.action === actionName);
+
+  const payload = {
+    participant: participant,
+    action: actionName,
+    points: actionObj ? actionObj.points : 0,
+    contexte: contexte
+  };
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    
+    document.getElementById("input-contexte").value = "";
+    await loadData();
+    showPage('home');
+  } catch (err) {
+    console.error("Erreur :", err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Valider l'incident";
+  }
+});
+
+loadData();
