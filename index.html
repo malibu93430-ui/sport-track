@@ -1,1 +1,72 @@
-const API_URL = https://script.google.com/macros/s/AKfycbwqn313sKP6NIa4plrwoji80VXttBtNy2gI0o3FS75fDa1j5NOJuYE-AuMrEqLLASFg/exec";
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le N.E.L.S.O. d'or</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo-title">
+      <span class="emoji-logo">🏆</span>
+      <div>
+        <h1>Le N.E.L.S.O. d'or</h1>
+        <p class="subtitle">Niveaux d'Énervement Limites Sans Outrage</p>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="showPage('home')">📊 Classement</button>
+      <button class="nav-btn" onclick="showPage('add')">⚡ Craquage</button>
+      <button class="nav-btn" onclick="showPage('rules')">📜 Barème</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- PAGE 1 : CLASSEMENT -->
+    <div id="page-home" class="page active">
+      <section class="leader-card">
+        <span class="crown">👑</span>
+        <h2 id="leader-name">Chargement...</h2>
+        <div class="score-badge"><span id="leader-score">0</span> pts</div>
+        <p id="leader-incidents">0 incidents enregistrés</p>
+      </section>
+
+      <section class="section-box">
+        <h3>🏆 Classement Général</h3>
+        <ol id="ranking-list" class="ranking-list"></ol>
+      </section>
+    </div>
+
+    <!-- PAGE 2 : SIGNALER UN CRAQUAGE -->
+    <div id="page-add" class="page">
+      <section class="section-box">
+        <h2>⚡ Signaler un craquage</h2>
+        <form id="incident-form">
+          <label>Collègue :</label>
+          <select id="select-participant" required></select>
+
+          <label>Infraction :</label>
+          <select id="select-action" required></select>
+
+          <label>Contexte (Optionnel) :</label>
+          <input type="text" id="input-contexte" placeholder="Ex: Réunion Budget 14h...">
+
+          <button type="submit" id="btn-submit">Valider l'incident</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- PAGE 3 : BARÈME -->
+    <div id="page-rules" class="page">
+      <section class="section-box">
+        <h2>📜 Barème officiel des points</h2>
+        <ul id="rules-list" class="rules-list"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
